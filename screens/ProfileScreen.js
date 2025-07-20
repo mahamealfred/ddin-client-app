@@ -1,9 +1,24 @@
 import React from 'react';
-import { View, Text, StyleSheet, Image, TouchableOpacity, ScrollView } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  Image,
+  TouchableOpacity,
+  ScrollView,
+  Switch,
+} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Footer from '../components/Footer';
+import AppBackground from '../components/AppBackground';
+import { useTheme } from '../themes/ThemeContext';
+import { logout } from '../utils/auth';
+
 
 export default function ProfileScreen({ navigation }) {
+  const { theme, toggleTheme } = useTheme();
+  const isDarkMode = theme.mode === 'dark';
+
   const user = {
     name: 'Alfred Mahame',
     email: 'alfred@example.com',
@@ -11,50 +26,98 @@ export default function ProfileScreen({ navigation }) {
     avatar: 'https://i.pravatar.cc/150?img=12',
   };
 
+  // ✅ Logout Handler
+  const handleLogout = async () => {
+    try {
+      await logout();
+      navigation.reset({
+        index: 0,
+        routes: [{ name: 'SignIn' }], 
+      });
+    } catch (error) {
+      console.error('Logout error:', error);
+    }
+  };
+
   return (
-    <View style={styles.container}>
-      <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
-        {/* Profile Header */}
-        <View style={styles.header}>
-          <Image source={{ uri: user.avatar }} style={styles.avatar} />
-          <Text style={styles.name}>{user.name}</Text>
-          <Text style={styles.email}>{user.email}</Text>
-          <Text style={styles.phone}>{user.phone}</Text>
-        </View>
+    <AppBackground>
+      <View style={[styles.container, { backgroundColor: theme.background }]}>
+        <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+          <View style={[styles.header, { backgroundColor: isDarkMode ? '#292542cc' : '#191233cc' }]}>
+            <Image source={{ uri: user.avatar }} style={styles.avatar} />
+            <Text style={[styles.name, { color: theme.text }]}>{user.name}</Text>
+            <Text style={[styles.email, { color: theme.text }]}>{user.email}</Text>
+            <Text style={[styles.phone, { color: theme.primary }]}>{user.phone}</Text>
+          </View>
 
-        {/* Account Actions */}
-        <View style={styles.actions}>
-          <Text style={styles.sectionTitle}>Account Settings</Text>
-          <ProfileAction icon="person-outline" label="Edit Profile" onPress={() => alert('Edit Profile')} />
-          <ProfileAction icon="lock-closed-outline" label="Change Password" onPress={() => alert('Change Password')} />
-          <ProfileAction icon="log-out-outline" label="Logout" onPress={() => alert('Logged out')} />
-        </View>
-      </ScrollView>
+          <View style={styles.actions}>
+            <Text style={[styles.sectionTitle, { color: theme.text }]}>Account Settings</Text>
 
-      {/* Footer */}
-      <Footer navigation={navigation} />
-    </View>
+            <View style={[styles.actionItem, { backgroundColor: theme.card }]}>
+              <Ionicons name="moon-outline" size={24} color={theme.primary} />
+              <Text style={[styles.actionLabel, { color: theme.text, flex: 1, marginLeft: 15 }]}>
+                Dark Mode
+              </Text>
+              <Switch
+                value={isDarkMode}
+                onValueChange={toggleTheme}
+                thumbColor={theme.primary}
+              />
+            </View>
+
+            <ProfileAction
+              icon="person-outline"
+              label="Edit Profile"
+              onPress={() => alert('Edit Profile')}
+              theme={theme}
+            />
+            <ProfileAction
+              icon="lock-closed-outline"
+              label="Change Password"
+              onPress={() => alert('Change Password')}
+              theme={theme}
+            />
+            {/* ✅ Logout Action */}
+            <ProfileAction
+            
+  icon="log-out-outline"
+  label="Logout"
+  onPress={async () => {
+    await logout();
+  }}
+  theme={theme}
+/>
+          
+          </View>
+          <View style={{ height: 100 }} />
+        </ScrollView>
+
+        <View style={styles.footer}>
+          <Footer navigation={navigation} />
+        </View>
+      </View>
+    </AppBackground>
   );
 }
 
-function ProfileAction({ icon, label, onPress }) {
+function ProfileAction({ icon, label, onPress, theme }) {
   return (
-    <TouchableOpacity style={styles.actionItem} onPress={onPress}>
-      <Ionicons name={icon} size={24} color="#f8882b" />
-      <Text style={styles.actionLabel}>{label}</Text>
+    <TouchableOpacity
+      style={[styles.actionItem, { backgroundColor: theme.card }]}
+      onPress={onPress}
+    >
+      <Ionicons name={icon} size={24} color={theme.primary} />
+      <Text style={[styles.actionLabel, { color: theme.text }]}>{label}</Text>
     </TouchableOpacity>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f1f1f1',
-  },
+  container: { flex: 1, backgroundColor: 'transparent' },
+  scrollContent: { paddingBottom: 120 },
   header: {
     alignItems: 'center',
-    backgroundColor: '#191233',
-    paddingVertical: 50,
+    paddingVertical: 40,
     borderBottomLeftRadius: 30,
     borderBottomRightRadius: 30,
     elevation: 4,
@@ -66,37 +129,14 @@ const styles = StyleSheet.create({
     borderWidth: 4,
     borderColor: '#f8882b',
   },
-  name: {
-    fontSize: 24,
-    color: '#fff',
-    fontWeight: '700',
-    marginTop: 15,
-  },
-  email: {
-    fontSize: 14,
-    color: '#dcdcdc',
-    marginTop: 2,
-  },
-  phone: {
-    fontSize: 14,
-    color: '#f8882b',
-    marginTop: 4,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#333',
-    marginBottom: 15,
-  },
-  actions: {
-    marginTop: 30,
-    paddingHorizontal: 20,
-    paddingBottom: 20,
-  },
+  name: { fontSize: 24, fontWeight: '700', marginTop: 15 },
+  email: { fontSize: 14, marginTop: 2 },
+  phone: { fontSize: 14, marginTop: 4 },
+  sectionTitle: { fontSize: 18, fontWeight: '600', marginBottom: 15 },
+  actions: { marginTop: 30, paddingHorizontal: 20 },
   actionItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#fff',
     paddingVertical: 16,
     paddingHorizontal: 20,
     borderRadius: 14,
@@ -107,10 +147,11 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
     elevation: 4,
   },
-  actionLabel: {
-    fontSize: 16,
-    marginLeft: 15,
-    color: '#333',
-    fontWeight: '500',
+  actionLabel: { fontSize: 16, marginLeft: 15, fontWeight: '500' },
+  footer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
   },
 });

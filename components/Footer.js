@@ -34,17 +34,22 @@ const styles = StyleSheet.create({
     paddingHorizontal: 30,
     paddingTop: 10,
     paddingBottom: 20,
-    backgroundColor: '#fff',
-    elevation: 20,
-    borderTopWidth: 1,
-    borderTopColor: '#ddd',
+    backgroundColor: 'rgba(25, 18, 51, 0.9)', // semi-transparent dark
+    borderTopLeftRadius: 30,
+    borderTopRightRadius: 30,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    elevation: 10,
+    zIndex: 100,
   },
   footerButton: {
     alignItems: 'center',
   },
   footerLabel: {
     fontSize: 12,
-    color: '#333',
+    color: '#f1f1f1',
     marginTop: 2,
   },
   middleButton: {

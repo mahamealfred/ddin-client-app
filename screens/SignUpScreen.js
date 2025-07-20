@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -11,6 +11,8 @@ import {
   Platform,
 } from 'react-native';
 import * as Animatable from 'react-native-animatable';
+import { debounce } from 'lodash';
+import api from '../utils/api';
 
 export default function SignUpScreen({ navigation }) {
   const [step, setStep] = useState(1);
@@ -25,6 +27,8 @@ export default function SignUpScreen({ navigation }) {
   });
 
   const [errors, setErrors] = useState({});
+  const [message, setMessage] = useState('');
+  const [loading, setLoading] = useState(false);
 
   const validateStep = () => {
     const newErrors = {};
@@ -58,27 +62,73 @@ export default function SignUpScreen({ navigation }) {
     return Object.keys(newErrors).length === 0;
   };
 
+  // Debounced check for username availability
+  const checkUsernameExists = useCallback(
+    debounce(async (username) => {
+      try {
+        const res = await api.get(`/auth/find/${username}`);
+        if (res.data.success === true) {
+          setErrors((prev) => ({ ...prev, username: 'Username is already taken' }));
+        } else {
+          setErrors((prev) => {
+            const newErrors = { ...prev };
+            delete newErrors.username;
+            return newErrors;
+          });
+        }
+      } catch (error) {
+        //console.error('Username check failed:', error?.response?.data.message || error.message);
+      }
+    }, 500),
+    []
+  );
+
+  const handleChange = (key, value) => {
+    setFormData((prev) => ({ ...prev, [key]: value }));
+
+    if (key === 'username' && value.length >= 3) {
+      checkUsernameExists(value);
+    }
+
+    if (errors[key]) {
+      validateStep();
+    }
+  };
+
   const handleNext = () => {
     if (validateStep()) {
-      setStep(step + 1);
+      setStep((prev) => prev + 1);
     }
   };
 
   const handleBack = () => {
-    setStep(step - 1);
+    setStep((prev) => prev - 1);
   };
 
-  const handleSignUp = () => {
+  const handleSignUp = async () => {
     if (validateStep()) {
-      // Submit or navigate
-      navigation.navigate('Home');
-    }
-  };
-
-  const handleChange = (key, value) => {
-    setFormData({ ...formData, [key]: value });
-    if (errors[key]) {
-      validateStep();
+      setLoading(true);
+      setMessage('');
+      try {
+        const response = await api.post('/auth/register', formData);
+        if (response.status === 201 || response.status === 200) {
+          setMessage('Account created successfully!');
+          setTimeout(() => {
+            navigation.navigate('SignIn');
+          }, 1500);
+        }
+      } catch (error) {
+        console.log('error:', error);
+        if (error.response) {
+          setMessage(error.response.data.message || 'Registration failed');
+        } else if (error.request) {
+          setMessage('No response from server. Check your connection.');
+        } else {
+          setMessage('Error: ' + error.message);
+        }
+      } finally {
+        setLoading(false);
+      }
     }
   };
 
@@ -97,6 +147,18 @@ export default function SignUpScreen({ navigation }) {
             <Animatable.View animation="fadeInUp" duration={800} style={styles.card}>
               <Text style={styles.title}>Create Account</Text>
               <Text style={styles.subtitle}>Sign up to get started</Text>
+
+              {message !== '' && (
+                <Text
+                  style={{
+                    color: message.includes('successfully') ? 'green' : 'red',
+                    textAlign: 'center',
+                    marginBottom: 10,
+                  }}
+                >
+                  {message}
+                </Text>
+              )}
 
               {step === 1 && (
                 <>
@@ -185,10 +247,13 @@ export default function SignUpScreen({ navigation }) {
               </View>
 
               <TouchableOpacity
-                style={styles.button}
+                style={[styles.button, loading && { opacity: 0.6 }]}
                 onPress={step === 3 ? handleSignUp : handleNext}
+                disabled={loading}
               >
-                <Text style={styles.buttonText}>{step === 3 ? 'Sign Up' : 'Next'}</Text>
+                <Text style={styles.buttonText}>
+                  {loading ? 'Please wait...' : step === 3 ? 'Sign Up' : 'Next'}
+                </Text>
               </TouchableOpacity>
 
               <TouchableOpacity onPress={() => navigation.navigate('SignIn')}>
@@ -206,15 +271,9 @@ export default function SignUpScreen({ navigation }) {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  bg: {
-    flex: 1,
-  },
-  avoid: {
-    flex: 1,
-  },
+  container: { flex: 1 },
+  bg: { flex: 1 },
+  avoid: { flex: 1 },
   centerContainer: {
     flex: 1,
     justifyContent: 'center',

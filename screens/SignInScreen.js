@@ -11,23 +11,29 @@ import {
   Platform,
 } from 'react-native';
 import * as Animatable from 'react-native-animatable';
+import api from '../utils/api'; // Make sure this points to your Axios instance
+import { storeTokens } from '../utils/auth';
+import eventBus from '../utils/eventBus';
+
 
 export default function SignInScreen({ navigation }) {
-  const [email, setEmail] = useState('');
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [errors, setErrors] = useState({});
   const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState('');
 
   const validate = () => {
     let valid = true;
     let newErrors = {};
 
-    if (!email.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)) {
-      newErrors.email = 'Invalid email address';
+    if (username.trim().length < 3) {
+      newErrors.username = 'Invalid username';
       valid = false;
     }
 
-    if (password.length < 6) {
+    if (password.trim().length < 6) {
       newErrors.password = 'Password must be at least 6 characters';
       valid = false;
     }
@@ -36,16 +42,41 @@ export default function SignInScreen({ navigation }) {
     return valid;
   };
 
-  const handleSignIn = () => {
+  const handleSignIn = async () => {
     if (validate()) {
-      navigation.navigate('Home');
+      setLoading(true);
+      setMessage('');
+      try {
+        const response = await api.post('/auth/login', {
+          username,
+          password,
+        });
+
+        if (response.status === 200) {
+          const { accessToken, refreshToken } = response.data;
+          await storeTokens({ accessToken, refreshToken });
+
+          // Inside your login success block
+          setMessage('Login successful!');
+          eventBus.emit('LOGIN_SUCCESS');
+        }
+      } catch (error) {
+        if (error.response) {
+          setMessage(error.response.data.message || 'Login failed');
+        } else {
+          setMessage('Error: ' + error.message);
+        }
+      } finally {
+        setLoading(false);
+      }
     }
   };
+
 
   return (
     <SafeAreaView style={styles.container}>
       <ImageBackground
-        source={require('../assets/logo.png')} // Replace with your preferred background image
+        source={require('../assets/logo.png')}
         style={styles.bg}
         resizeMode="cover"
       >
@@ -55,22 +86,33 @@ export default function SignInScreen({ navigation }) {
         >
           <View style={styles.centerWrapper}>
             <Animatable.View animation="fadeInUp" duration={800} style={styles.card}>
-              <Text style={styles.title}>Welcome Back</Text>
+              <Text style={styles.title}>Welcome Back to Moola</Text>
               <Text style={styles.subtitle}>Sign in to continue</Text>
+
+              {message !== '' && (
+                <Text
+                  style={{
+                    color: message.includes('successful') ? 'green' : 'red',
+                    textAlign: 'center',
+                    marginBottom: 10,
+                  }}
+                >
+                  {message}
+                </Text>
+              )}
 
               <View style={styles.inputContainer}>
                 <TextInput
-                  placeholder="Email"
+                  placeholder="Username"
                   placeholderTextColor="#999"
                   style={styles.input}
-                  keyboardType="email-address"
-                  value={email}
+                  value={username}
                   onChangeText={(text) => {
-                    setEmail(text);
-                    if (errors.email) validate();
+                    setUsername(text);
+                    if (errors.username) validate();
                   }}
                 />
-                {errors.email && <Text style={styles.error}>{errors.email}</Text>}
+                {errors.username && <Text style={styles.error}>{errors.username}</Text>}
 
                 <View style={styles.passwordContainer}>
                   <TextInput
@@ -94,8 +136,12 @@ export default function SignInScreen({ navigation }) {
                 {errors.password && <Text style={styles.error}>{errors.password}</Text>}
               </View>
 
-              <TouchableOpacity style={styles.button} onPress={handleSignIn}>
-                <Text style={styles.buttonText}>Sign In</Text>
+              <TouchableOpacity
+                style={[styles.button, loading && { opacity: 0.6 }]}
+                onPress={handleSignIn}
+                disabled={loading}
+              >
+                <Text style={styles.buttonText}>{loading ? 'Signing In...' : 'Sign In'}</Text>
               </TouchableOpacity>
 
               <TouchableOpacity onPress={() => navigation.navigate('SignUp')}>

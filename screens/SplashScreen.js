@@ -34,7 +34,7 @@ export default function SplashScreen({ navigation }) {
           style={styles.logo}
           resizeMode="contain"
         />
-        <Text style={styles.tagline}>Empowering Smart Payments</Text>
+        <Text style={styles.tagline}>Moola</Text>
       </Animated.View>
     </View>
   );
